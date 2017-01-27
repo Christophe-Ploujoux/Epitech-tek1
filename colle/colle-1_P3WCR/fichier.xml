@@ -1,0 +1,18 @@
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Titre</title>
+      <link>www.link.com</link>
+      <description>
+	Ceci est un XML
+      </description>
+    </item>
+    <item>
+      <title>Titre2</title>
+      <link>www.link2.com</link>
+      <description>
+	2 eme item
+      </description>
+    </item>
+  </channel>
+</rss>

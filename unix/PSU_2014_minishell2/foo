@@ -1,0 +1,18 @@
+total 64
+-rw-rw-r-- 1 ploujo_c ploujo_c 1873 mars  15 21:30 builtins.c
+-rw-rw-r-- 1 ploujo_c ploujo_c 1824 mars  15 21:07 cd.c
+-rw-rw-r-- 1 ploujo_c ploujo_c  478 mars  15 21:07 check_redir.c
+-rw-rw-r-- 1 ploujo_c ploujo_c 1255 mars  15 21:23 exec.c
+-rw-rw-r-- 1 ploujo_c ploujo_c  605 mars  15 21:07 exit.c
+-rw-rw-r-- 1 ploujo_c ploujo_c    0 mars  15 21:31 foo
+-rw-rw-r-- 1 ploujo_c ploujo_c  988 mars  15 21:23 get_env.c
+drwxrwxr-x 2 ploujo_c ploujo_c 4096 mars  15 21:25 include
+-rw-rw-r-- 1 ploujo_c ploujo_c 1420 mars  15 21:07 list.c
+-rw-rw-r-- 1 ploujo_c ploujo_c 1579 mars  15 21:30 main.c
+-rw-rw-r-- 1 ploujo_c ploujo_c  709 mars  15 21:13 Makefile
+-rw-rw-r-- 1 ploujo_c ploujo_c  823 mars  15 21:07 prompt.c
+-rw-rw-r-- 1 ploujo_c ploujo_c 2658 mars  15 21:20 redir.c
+-rw-rw-r-- 1 ploujo_c ploujo_c 1321 mars  15 21:27 str2.c
+-rw-rw-r-- 1 ploujo_c ploujo_c 1091 mars  15 21:26 str.c
+-rw-rw-r-- 1 ploujo_c ploujo_c 1539 mars  15 21:22 str_to_word_tab.c
+-rw-rw-r-- 1 ploujo_c ploujo_c  498 mars  15 21:18 x_malloc.c

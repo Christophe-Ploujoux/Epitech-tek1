@@ -1,0 +1,49 @@
+#!/usr/bin/python
+
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
+import math
+import array as array
+
+#algo somme
+def somme_cos(n, a, x):
+        S = 0
+        i = 0
+        while (i <= n):
+                S = S + ((math.cos(math.pow(a, i) * math.pi * x)) / math.pow(2, i))
+                i += 1
+        return (S)
+
+#partie 2 (2 arguments)
+argv = sys.argv
+if (len(argv) != 3):
+	print('2 arguments: [a] [n max]\n')
+	sys.exit(1)
+else:
+        a = float(argv[1])
+        k = int(argv[2])
+
+	#deuxieme partie
+        tabx = []
+        i = -2
+        while (i <= 2):
+                tabx.append(i)
+                i += 0.0001
+	taby = []
+        i = 0
+        ymin = 0
+        ymax = 0
+	while (i < len(tabx)):
+		taby.append(somme_cos(k, a, tabx[i]))
+                if (taby[i] > ymax):
+                        ymax = taby[i]
+                if (taby[i] < ymin):
+                        ymin = taby[i]
+		i += 1
+	p1 = plt.plot(tabx,taby, "b")
+	plt.axis([-2, 2, math.floor(ymin * 2) / 2, math.ceil(ymax * 2) / 2])
+	plt.title("108 - Monstre: a = %.1f" %a)
+	plt.ylabel("f(x) = somme(cos(a^n * pi *x) / 2^n")
+	plt.xlabel("x")
+	plt.show()

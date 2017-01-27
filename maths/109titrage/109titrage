@@ -1,0 +1,151 @@
+#!/usr/bin/python
+
+import matplotlib.pyplot as plt
+import sys
+import math
+import os
+
+#fonction absolue
+def abs(x):
+        return {True: x, False: -x}[x >= 0]
+
+#fonction derivee quand il n'y a pas d'argument
+def derive():
+        xold = 0
+        yold = 0
+        xmax = 0
+        ymax = 0
+        result = 0
+        courbex = []
+        courbey = []
+        derx = []
+        dery = []
+        volx = []
+        voly = []
+        while True:
+                source = sys.stdin.readline()
+                if source == 'FIN\n':
+                        break
+                op = source.split(';')
+                x = float(op[0])
+                y = float(op[1])
+                courbex.append(x)
+                courbey.append(y)
+                if result >= ymax:
+                        xmax = x
+                        ymax = result
+                derx.append(x)
+                dery.append(result)
+                if (xold - x) != 0:
+                        result = (yold - y) / (xold - x)
+                xold = x
+                yold = y
+        volx.append(xmax)
+        volx.append(xmax)
+        voly.append(0)
+        voly.append(15)
+##affichage de la courbe et du volume equivalent
+        print('Volume equivalent = ' + str(xmax) + 'mL')
+        plt.plot(derx, dery, "r", label = 'Derivee')
+        plt.plot(volx, voly, "g", label = 'Volume eq')
+        plt.plot(courbex, courbey, "b", label = 'Courbe')
+        plt.axis([0, 20, 0, 15])
+        plt.title("109titrage: Methode derivee")
+        plt.ylabel("pH")
+        plt.xlabel("Vol")
+        plt.legend()
+        plt.show()
+
+#fonction tangente avec un argument compris entre 20 et 80
+def tangente():
+        angle = math.atan(math.radians(float(sys.argv[1])))
+        xsave = 0
+        ysave = 0
+        xmax = 0
+        ymax = 0
+        result = 0
+        saveres = 0
+        i = 0
+        courbex = []
+        courbey = []
+        volx = []
+        voly = []
+        tan1X = []
+        tan1Y = []
+        tan2X = []
+        tan2Y = []
+        tan3X = []
+        tan3Y = []
+        savet = []
+        j = 0
+        k = 0
+        sous1 = 1
+        sous2 = 1
+
+        while True:
+                source = sys.stdin.readline()
+                if source == 'FIN\n':
+                        break
+                op = source.split(';')
+                x = float(op[0])
+                y = float(op[1])
+                courbex.append(x)
+                courbey.append(y)
+                if result >= ymax:
+                        xmax = x
+                        ymax = result
+                if (abs(angle - result) < abs(angle - saveres) and sous1 > abs(angle - result) and courbex[i] <= 10):
+                        sous1 = abs(angle -result)
+                        j = i
+                if (j != i and abs(angle - result) < abs(angle - saveres) and sous2 > abs(angle - result) and courbex[i] > 10):
+                        sous2 = abs(angle - result)
+                        k = i
+                saveres = result
+                if (xsave - x) != 0:
+                        result = (ysave - y) / (xsave - x)
+                xsave = x
+                ysave = y
+                i = i + 1
+        tan1X.append(courbex[j])
+        tan1Y.append(courbey[j])
+        tan1X.append(0)
+        tan1Y.append(courbey[j] - angle * courbex[j])
+        tan1X.append(x)
+        tan1Y.append(angle * x + courbey[j] - angle * courbex[j])
+        tan2X.append(courbex[k])
+        tan2Y.append(courbey[k])
+        tan2X.append(0)
+        tan2Y.append(courbey[k] - angle * courbex[k])
+        tan2X.append(x)
+        tan2Y.append(angle * x + courbey[k] - angle * courbex[k])
+        tan3X.append(0)
+        tan3Y.append(((courbey[j] - angle * courbex[j]) + (courbey[k] - angle * courbex[k])) / 2)
+        tan3X.append(x)
+        tan3Y.append(((angle * x + courbey[j] - angle * courbex[j]) + (angle * x + courbey[k] - angle * courbex[k])) / 2)
+        volx.append((courbex[j] + courbex[k]) / 2)
+        voly.append(0)
+        volx.append((courbex[j] + courbex[k]) / 2)
+        voly.append(12)
+        print 'Volume equivalent = ' + str((courbex[j] + courbex[k]) / 2) + 'mL'
+        plt.plot(courbex, courbey, color='#000000', label='Titrage')
+        plt.plot(tan1X, tan1Y, color='#3535ff', label='Tangente Inf.')
+        plt.plot(tan2X, tan2Y, color='#00ff00', label='Tangente Sup.')
+        plt.plot(tan3X, tan3Y, color='#1080ff', label='Tangente Mid.')
+        plt.plot(volx, voly, color='#ff0000', label='Vol equi')
+        plt.ylabel('PH')
+        plt.xlabel('Vol')
+        plt.axis([0, 20, 0, 12])
+        plt.legend()
+        plt.title('109titrage: Methode tangente')
+        plt.show()
+
+try:
+        if (len(sys.argv) == 1):
+                derive()
+        elif (len(sys.argv) == 2):
+                tangente()
+        else:
+                print('You have to write at most 1 argument')
+except:
+        print('Error...')
+        sys.exit(-1)

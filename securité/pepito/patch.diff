@@ -1,0 +1,444 @@
+diff -u source/daemon.c source_new/daemon.c
+--- source/daemon.c	2015-04-19 20:43:21.477196833 +0200
++++ source_new/daemon.c	2015-04-19 20:53:14.305207483 +0200
+@@ -18,25 +18,26 @@
+ #include <sys/stat.h>
+ 
+ #include "pepito.h"
+-
++#include "utils.h" /*rajout include*/
+ #include "daemon.h"
+ #include "network.h"
+ 
+ /* Main daemon functions ---------------------------------------- */
+ 
+ /* sig */
+-
+ void
+ sigHandler(int sig)
+ {
+   switch (sig) {
+   case SIGINT:
+-    fprintf(stderr, "Process received SIGINT.\n" \
+-	    "Exiting\n");
++    if (fprintf(stderr, "Process received SIGINT.\n" \
++	    "Exiting\n") < 0)
++      die("fprintf()");
+     break;
+   case SIGTERM:
+-    fprintf(stderr, "Process received SIGTERM.\n" \
+-	    "Exiting\n");
++    if (fprintf(stderr, "Process received SIGTERM.\n" \
++	    "Exiting\n") < 0)
++      die("fprintf()");
+     break;
+   }
+   remove("pepito.pid");
+@@ -44,7 +45,6 @@
+ }
+ 
+ /* run */
+-
+ int
+ checkOtherProcess(void)
+ {
+@@ -54,7 +54,7 @@
+     fprintf(stderr, "Daemon is already running.\n"	  \
+ 	    "If it's not, please check 'pepito.pid'.\n"	  \
+ 	    "Exiting\n");
+-    return -1;
++    die("fprintf()");
+   }
+   return 0;
+ }
+@@ -65,14 +65,18 @@
+   FILE*			pidFile;
+   pid_t			pid;
+ 
+-  if (!(pidFile = fopen("pepito.pid", "w"))) {
+-    fprintf(stderr, "Cannot save process id.\n" \
+-	    "Exiting\n");
+-    return -1;
++  if (!(pidFile = fopen("pepito.pid", "rw"))) {
++    die("fopen()");
++    if (fprintf(stderr, "Cannot save process id.\n" \
++	    "Exiting\n") < 0)
++      die("fprintf()");
++    die("fprintf()");
+   }
+   pid = getpid();
+-  fprintf(pidFile, "%i", pid);
+-  fclose(pidFile);
++  if (fprintf(pidFile, "%i", pid) < 0)
++      die("fprintf()");
++  if (fclose(pidFile) == EOF)
++      die("fclose()");
+   return 0;
+ }
+ 
+@@ -84,10 +88,13 @@
+   struct sockaddr_in	sa;
+ 
+   if (checkOtherProcess())
+-    return (EXIT_FAILURE);
+-  signal(SIGTERM, sigHandler);
+-  signal(SIGINT, sigHandler);
+-  signal(SIGUSR1, sigHandler);
++    return EXIT_FAILURE;
++  if (signal(SIGTERM, sigHandler) == SIG_ERR)
++    die("signal()");
++  if (signal(SIGINT, sigHandler) == SIG_ERR)
++    die("signalf()");
++  if (signal(SIGUSR1, sigHandler) == SIG_ERR)
++    die("signal()");
+ 
+   if (!debug) {
+     daemon(1, 1);
+@@ -95,8 +102,8 @@
+       return EXIT_FAILURE;
+   }
+ 
+-  fprintf(stderr, "Daemon started\n");
+-
++  if (fprintf(stderr, "Daemon started\n") < 0)
++    die("fprintf()");
+   initConnection(&sa);
+   while (1) {
+     setClient(acceptClient(&sa));
+@@ -110,7 +117,6 @@
+ }
+ 
+ /* stop */
+-
+ int
+ stopDaemon(void)
+ {
+@@ -119,9 +125,12 @@
+ 
+   if ((pidFile = fopen("pepito.pid", "r")) == NULL)
+     return EXIT_SUCCESS;
+-  fscanf(pidFile, "%i", &pid);
++  if (fscanf(pidFile, "%i", &pid) == EOF)
++    die("fscanf()");
+   kill(pid, SIGUSR1);
+-  fprintf(stderr, "Stopping daemon (%i)\n", pid);
+-  remove("pepito.pid");
++  if (fprintf(stderr, "Stopping daemon (%i)\n", pid) < 0)
++    die("fprintf()");
++  if (remove("pepito.pid") == -1)
++    die("remove()");
+   return EXIT_SUCCESS;
+ }
+Seulement dans source: daemon.o
+Les sous-répertoires source/lib_linux et source_new/lib_linux sont identiques
+Les sous-répertoires source/lib_netbsd et source_new/lib_netbsd sont identiques
+diff -u source/main.c source_new/main.c
+--- source/main.c	2015-04-19 20:43:21.477196833 +0200
++++ source_new/main.c	2015-04-19 20:52:31.417206712 +0200
+@@ -47,28 +47,27 @@
+   {NULL,         0}
+ };
+ 
+-/* --- checkPassword() ---------------------------------------------- */
+-
+ int
+ checkPassword(char *password)
+ {
+-  char			savePassword[64] = {0};
++  char			savePassword[512] = {0};
+   char			*logMessage;
+   int			isUser = 0;
+   int			isAdmin = 0;
+   int			i;
+ 
+-  if (!strcmp(password, userPassword))
++  if (password != NULL && strlen(password) <= 512 && !strncmp(password, userPassword, strlen(password)))
+     isUser = 1;
+-  strcpy(savePassword, password);
++  strncpy(savePassword, password, strlen(savePassword));
+ 
+   for (i = 0; password[i]; ++i)
+     password[i] ^= xorKey;
+-  if (!strcmp(password, adminPassword))
++  if (!strncmp(password, adminPassword, strlen(password)))
+     isAdmin = 1;
+ 
+   if (!(isAdmin | isUser)) {
+-    logMessage = malloc(sizeof(*logMessage) * (strlen(password) + 21));
++    if ((logMessage = malloc(sizeof(*logMessage) * (strlen(password) + 21))) == NULL)
++      die("malloc()");
+     memset(logMessage, 0, strlen(password) + 21);
+     strcat(logMessage, "Invalid password : ");
+     strcat(logMessage, savePassword);
+@@ -79,13 +78,11 @@
+   return isAdmin ? ADMIN : isUser ? USER : NOBODY;
+ }
+ 
+-/* --- change*Password() -------------------------------------------- */
+-
+ static void
+ changeUserPassword(char *password)
+ {
+   if (password) {
+-    strcpy(userPassword, password);
++    strncpy(userPassword, password, strlen(userPassword));
+     sendLogMessage(PASSWD_CHANGE);
+   }
+ }
+@@ -98,7 +95,7 @@
+   if (password) {
+     for (i = 0; password[i]; ++i)
+       password[i] ^= xorKey;
+-    strcpy(adminPassword, password);
++    strncpy(adminPassword, password, strlen(adminPassword));
+     sendLogMessage(PASSWD_CHANGE);
+   }
+ }
+@@ -125,8 +122,6 @@
+   return 0;
+ }
+ 
+-/* --- Display all Recipes ------------------------------------------ */
+-
+ static int
+ handlerDisplayRecipes(void *packetPtr, size_t packetSize)
+ {
+@@ -140,7 +135,8 @@
+   if (user == USER || user == ADMIN) {
+     sendLogMessage("Lists of Recipes\n================\n");
+     for (i = 0; tab_recipes[i].name; ++i) {
+-      snprintf(msg, sizeof(msg), "[%d] - %s\n", i, tab_recipes[i].name);
++      if (snprintf(msg, sizeof(msg), "[%d] - %s\n", i, tab_recipes[i].name) < 0)
++        die("snprintf()");
+       sendLogMessage(msg);
+     }
+   }
+@@ -149,7 +145,6 @@
+ }
+ 
+ /* --- Display Stock of Granola Corp --------------------------------- */
+-
+ static int
+ handlerDisplayStock(void *packetPtr, size_t packetSize)
+ {
+@@ -160,17 +155,20 @@
+ 
+   password = getStr(&packetPtr, &packetSize);
+   if ((user = checkPassword(password)) == USER || user == ADMIN) {
+-    snprintf(msg, sizeof(msg), "Money : %d\n", money);
++    if (snprintf(msg, sizeof(msg), "Money : %d\n", money) < 0)
++      die("snprintf()");
+     sendLogMessage(msg);
+     sendLogMessage("\nIngredient stock\n================\n");
+     for (i = 0; stock[i].name; ++i) {
+-      snprintf(msg, sizeof(msg), "[%d] - %s\n", stock[i].quantity, stock[i].name);
++      if (snprintf(msg, sizeof(msg), "[%d] - %s\n", stock[i].quantity, stock[i].name) < 0)
++        die("snprintf()");
+       sendLogMessage(msg);
+     }
+     sendLogMessage("\nFor sale\n========\n");
+     for (i = 0; tab_recipes[i].name; ++i) {
+       if (tab_recipes[i].quantity) {
+-	snprintf(msg, sizeof(msg), "%d x %s\n", tab_recipes[i].quantity, tab_recipes[i].name);
++	if (snprintf(msg, sizeof(msg), "%d x %s\n", tab_recipes[i].quantity, tab_recipes[i].name) < 0)
++    die("snprintf()");
+ 	sendLogMessage(msg);
+       }
+     }
+@@ -232,7 +230,8 @@
+       sendLogMessage(log);
+       return -1;
+     }
+-    fprintf(stderr, "Recipe : '%s'\n", recipe);
++    if (fprintf(stderr, "Recipe : '%s'\n", recipe) < 0)
++      die("fprintf()");
+     for (id = 0; tab_recipes[id].name != NULL
+ 	   && strcmp(tab_recipes[id].name, recipe); ++id);
+     if (tab_recipes[id].name == NULL) {
+@@ -245,7 +244,8 @@
+       return -1;
+     }
+     _useIngredient(id);
+-    snprintf(msg, sizeof(msg), "%s was made\n", tab_recipes[id].name);
++    if (snprintf(msg, sizeof(msg), "%s was made\n", tab_recipes[id].name) < 0)
++      die("snprintf()");
+     sendLogMessage(msg);
+     free(recipe);
+   }
+@@ -254,7 +254,6 @@
+ }
+ 
+ /* --- Sale Granola ----------------------------------------------- */
+-
+ static int
+ handlerSaleGranola(void *packetPtr, size_t packetSize)
+ {
+@@ -276,11 +275,13 @@
+     if (tab_recipes[id].quantity > 0) {
+       tab_recipes[id].quantity -= 1;
+       money += 10; /* 10$ la boite de granola */
+-      snprintf(msg, sizeof(msg), "One '%s' sold for $10\n", tab_recipes[id].name);
++      if (snprintf(msg, sizeof(msg), "One '%s' sold for $10\n", tab_recipes[id].name) < 0)
++        die("snprintf()");
+       sendLogMessage(msg);
+       return 0;
+     }
+-    snprintf(msg, sizeof(msg), "no '%s' found\n", tab_recipes[id].name);
++    if (snprintf(msg, sizeof(msg), "no '%s' found\n", tab_recipes[id].name) < 0)
++      die("snprintf()");
+     sendLogMessage(msg);
+     free(recipe);
+   }
+@@ -308,11 +309,12 @@
+     }
+ 
+     for (i = 0; stock[i].name != NULL; ++i) {
+-      if (!strcmp(ingredientName, stock[i].name)) {
++      if (!strncmp(ingredientName, stock[i].name, strlen(ingredientName))) {
+ 	money -= 2 * amount;
+ 	stock[i].quantity += amount;
+ 	sendLogMessage(INGREDIENT_BOUGHT);
+-	sprintf(log, "echo \"%s was bought\" >> log", ingredientName);
++	if (sprintf(log, "echo \"%s was bought\" >> log", ingredientName) < 0)
++    die("snprintf()");
+ 	free(ingredientName);
+ 	system(log);
+ 	return amount;
+@@ -341,33 +343,34 @@
+ #define HANDLER_LEN (sizeof(handlerTab) / sizeof (handlerTab[0]))
+ 
+ /* --- handlePacket() ----------------------------------------------- */
+-
+ int
+ handlePacket(void *packetPtr, size_t packetSize)
+ {
+   int			cmdId;
+ 
+   cmdId = getNumber(&packetPtr, &packetSize);
+-  if (cmdId > (int)HANDLER_LEN)
+-    fprintf(stderr, "ID (%i) out of range.\n", cmdId);
++  if (cmdId > (int)HANDLER_LEN){
++    if (fprintf(stderr, "ID (%i) out of range.\n", cmdId) < 0)
++      die("fprintf()");
++  }
+   else
+     handlerTab[cmdId](packetPtr, packetSize);
+   return 0;
+ }
+ 
+ /* --- main() ------------------------------------------------------- */
+-
+ int
+ main(int argc, char **argv)
+ {
+   if (argc > 1) {
+-    if (!strcmp(argv[1], "start"))
++    if (!strncmp(argv[1], "start", strlen(argv[1])))
+       return (runDaemon(0));
+-    else if (!strcmp(argv[1], "debug"))
++    else if (!strncmp(argv[1], "debug", strlen(argv[1])))
+       return (runDaemon(1));
+-    else if (!strcmp(argv[1], "stop"))
++    else if (!strncmp(argv[1], "stop", strlen(argv[1])))
+       return (stopDaemon());
+   }
+-  fprintf(stderr, "usage: %s {start|debug|stop}\n", argv[0]);
++  if (fprintf(stderr, "usage: %s {start|debug|stop}\n", argv[0]) < 0)
++    die("fprintf()");
+   return EXIT_SUCCESS;
+ }
+Seulement dans source: main.o
+diff -u source/network.c source_new/network.c
+--- source/network.c	2015-04-19 20:43:21.477196833 +0200
++++ source_new/network.c	2015-04-19 20:43:21.477196833 +0200
+@@ -27,6 +27,7 @@
+ static int	       	sockFd = -1;
+ static int	       	client = -1;
+ 
++/*retour setsockopt*/
+ void
+ initConnection(struct sockaddr_in *sa)
+ {
+@@ -67,25 +68,31 @@
+   return 0;
+ }
+ 
++/*write retour (void), retour printf. Changement printf sans warning*/
+ void
+ sendLogMessage(char *msg)
+ {
+-  write(client, msg, strlen(msg));
+-  fprintf(stderr, msg);
++  (void)write(client, msg, strlen(msg));
++  if (fprintf(stderr, "%s", msg) < 0)
++    die("fprintf()");
+ }
+ 
++/* retour close */
+ void
+ setClient(int fd)
+ {
+   if (client != -1)
+-    close(client);
++    if (close(client) == -1)
++      die("close()");
+   client = fd;
+ }
+ 
++/* retour close*/
+ void
+ setSock(int fd)
+ {
+   if (sockFd != -1)
+-    close(sockFd);
++    if (close(sockFd) == -1)
++      die("close()");
+   sockFd = fd;
+ }
+Seulement dans source: network.o
+Les fichiers binaires source/pepito et source_new/pepito sont différents
+diff -u source/utils.c source_new/utils.c
+--- source/utils.c	2015-04-19 20:43:21.477196833 +0200
++++ source_new/utils.c	2015-04-19 20:43:21.477196833 +0200
+@@ -14,7 +14,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+-
++#include <stdint.h> /*include uint8_t */
+ #include "pepito.h"
+ 
+ #include "utils.h"
+@@ -22,11 +22,12 @@
+ #define	NOTANUMBER 0xFFFF
+ 
+ /* Utils functions ---------------------------------------------- */
+-
++/*retour remove*/
+ void
+ die(char *fctName) {
+   perror(fctName);
+-  remove("pepito.pid");
++  if (remove("pepito.pid") == - 1)
++    die("remove()");
+   exit(EXIT_FAILURE);
+ }
+ 
+@@ -51,13 +52,15 @@
+   return res;
+ }
+ 
++/*retour malloc*/
+ char
+ *getStr(void **p, size_t *l) {
+   int 			len;
+   char 			*res = NULL;
+ 
+   if ((len = getNumber(p, l)) > 0) {
+-    res = malloc(len + 1);
++    if ((res = malloc(len + 1)) == NULL)
++      die("malloc()");
+     res[len] = '\0';
+     strncpy(res, *p, len);
+     (*p) += len;
+Seulement dans source: utils.o
